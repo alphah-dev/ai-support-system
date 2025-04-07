@@ -1,0 +1,11 @@
+# backend/requirements.txt
+
+fastapi
+uvicorn[standard] # Includes standard dependencies like websockets, http tools
+pydantic[email] # Added [email] extra for EmailStr validation
+sqlalchemy # For potential future ORM use or complex DB interactions, good practice
+python-dotenv # For managing environment variables (like API keys)
+requests # For making HTTP requests (potential external API calls)
+# beautifulsoup4 # Optional: Add if you know you'll need web scraping
+numpy # For numerical operations, especially embedding similarity later
+ollama # The official Ollama Python client

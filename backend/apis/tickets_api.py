@@ -1,7 +1,7 @@
 # backend/apis/tickets_api.py
 
 from fastapi import APIRouter, HTTPException, Depends, Query, status
-from typing import List, Optional
+from typing import List, Optional, Dict # Import Dict
 import logging
 import time
 
@@ -13,6 +13,8 @@ from backend.database import database_manager as db
 from backend.agents.summarization_agent import SummarizationAgent
 from backend.agents.routing_agent import RoutingAgent
 from backend.agents.prediction_agent import PredictionAgent
+# <<<--- Import the authentication dependency ---<<<
+from backend import auth # Import the auth module to get the dependency function
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +22,13 @@ log = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/tickets", # All routes in this file will start with /tickets
     tags=["Tickets"], # Tag for grouping in API documentation
-    responses={404: {"description": "Ticket not found"}} # Default response for 404
+    # <<<--- Add the dependency globally to all routes in this router ---<<<
+    dependencies=[Depends(auth.get_current_active_user)],
+    responses={
+        404: {"description": "Ticket not found"},
+        401: {"description": "Not authenticated"}, # Add 401 response
+        403: {"description": "Not authorized"} # Add 403 if needed later for roles
+        }
 )
 
 # --- Dependency Injection Setup ---
@@ -82,13 +90,15 @@ async def create_ticket(
     # Inject agents using Depends
     summarizer: SummarizationAgent = Depends(get_summarization_agent),
     router_agent: RoutingAgent = Depends(get_routing_agent),
-    predictor: PredictionAgent = Depends(get_prediction_agent)
+    predictor: PredictionAgent = Depends(get_prediction_agent),
+    # Inject current user to potentially associate ticket with creator?
+    current_user: Dict = Depends(auth.get_current_active_user) # Example usage
 ):
     """
     Creates a new ticket, triggers summarization, prediction (placeholder),
     and initial routing (placeholder).
     """
-    log.info(f"Request received for POST /tickets with data: {ticket_data.dict()}")
+    log.info(f"Request received for POST /tickets with data: {ticket_data.dict()} by user '{current_user.get('username')}'")
     start_time = time.time() # Start timing
 
     # --- 1. Basic Ticket Creation in DB ---

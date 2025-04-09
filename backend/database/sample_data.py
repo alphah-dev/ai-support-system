@@ -50,10 +50,10 @@ def populate():
 
         # --- Add Sample Agents ---
         logging.info("Adding sample agents...")
-        agent1_id = add_agent('Alice Smith', 'alice@example.com', 'Billing,Login,API')
-        agent2_id = add_agent('Bob Johnson', 'bob@example.com', 'Technical,API,Database')
-        agent3_id = add_agent('Charlie Brown', 'charlie@example.com', 'General,Login,UI')
-        agent4_id = add_agent('Diana Prince', 'diana@example.com', 'Billing,Technical')
+        agent1_id = add_agent('aditya', 'aditya@example.com', 'Billing,Login,API')
+        agent2_id = add_agent('abhishek', 'abhishek@example.com', 'Technical,API,Database')
+        agent3_id = add_agent('aman', 'aman@example.com', 'General,Login,UI')
+        agent4_id = add_agent('gia', 'gia@example.com', 'Billing,Technical')
 
         # Manually update availability/load for some agents for realism
         if agent3_id:
@@ -67,10 +67,10 @@ def populate():
 
         # --- Add Sample Tickets ---
         logging.info("Adding sample tickets...")
-        t1 = add_ticket("John Doe", "Login Issue", "I cannot log into my account. It says 'Invalid Credentials'. I reset my password yesterday.", "john.doe@email.com", "High")
-        t2 = add_ticket("Jane Roe", "API Request Failing", "My POST request to /api/v1/users returns a 500 error. Please help.", "jane.roe@email.com", "Urgent")
-        t3 = add_ticket("Peter Jones", "Billing Question", "I was charged twice this month. Can you check my invoice?", "peter.j@email.com", "Medium")
-        t4 = add_ticket("Mary Major", "Feature Request", "Can you add a dark mode to the dashboard?", "mary.m@email.com", "Low")
+        t1 = add_ticket("harsh katiyar", "Login Issue", "I cannot log into my account. It says 'Invalid Credentials'. I reset my password yesterday.", "harsh.katiyar@email.com", "High")
+        t2 = add_ticket("samay raina", "API Request Failing", "My POST request to /api/v1/users returns a 500 error. Please help.", "raina.samay@email.com", "Urgent")
+        t3 = add_ticket("rudra pratap", "Billing Question", "I was charged twice this month. Can you check my invoice?", "pratap.rudra@email.com", "Medium")
+        t4 = add_ticket("krish singh", "Feature Request", "Can you add a dark mode to the dashboard?", "singh.krish@email.com", "Low")
         t5 = add_ticket("Test User", "Old Resolved Ticket", "This issue was fixed last week.", "test@example.com", "Medium")
 
         # Update status/assignment for some tickets for variety

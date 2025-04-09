@@ -1,47 +1,31 @@
-// frontend/src/components/TicketList.js
+// frontend/src/components/TicketList.js (or .jsx)
 import React, { useState } from 'react';
 import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Typography, Box, CircularProgress } from '@mui/material';
-import TicketItem from './TicketItem.js'; // Import the item component (create next)
+import TicketItem from './TicketItem.js'; // Use .js or .jsx
 
-function TicketList({ tickets, isLoading, error, reloadTickets }) { // Receive tickets, loading state, error, and reload function
+function TicketList({ tickets, isLoading, error, reloadTickets }) {
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10); // Or 5, 25 etc.
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    const handleChangePage = (event, newPage) => {
-        setPage(newPage);
-        // Optional: Scroll to top when changing page
-        window.scrollTo(0, 0);
-    };
+    const handleChangePage = (event, newPage) => { setPage(newPage); window.scrollTo(0, 0); };
+    const handleChangeRowsPerPage = (event) => { setRowsPerPage(parseInt(event.target.value, 10)); setPage(0); };
 
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0); // Reset to first page when changing rows per page
-    };
+    const paginatedTickets = Array.isArray(tickets) ? tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : [];
 
-    // Calculate tickets for the current page - Slice the tickets array
-    // Handle cases where tickets might be null or not an array yet during loading/error
-    const paginatedTickets = Array.isArray(tickets)
-        ? tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        : [];
-
-    // Display Loading or Error State
-    if (isLoading) {
-       return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
-    }
-    if (error) {
-       return <Typography color="error" sx={{ m: 2 }}>Error loading tickets: {error}</Typography>;
-    }
-    if (!tickets || tickets.length === 0) {
+    // Display Loading or Error State provided by parent
+    if (isLoading) { return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>; }
+    // Error is displayed by parent now
+    // if (error) { return <Typography color="error" sx={{ m: 2 }}>Error loading tickets: {error}</Typography>; }
+    if (!isLoading && (!tickets || tickets.length === 0)) { // Check isLoading is false before showing no tickets
         return <Typography sx={{mt: 3, textAlign: 'center'}}>No tickets found matching your criteria.</Typography>;
     }
 
     return (
-        <Paper sx={{ width: '100%', overflow: 'hidden', mt: 2 }}> {/* Add margin top */}
-            <TableContainer sx={{ maxHeight: 650 }}> {/* Adjust max height as needed */}
+        <Paper sx={{ width: '100%', overflow: 'hidden', mt: 2 }}>
+            <TableContainer sx={{ maxHeight: 650 }}>
                 <Table stickyHeader aria-label="tickets table">
                     <TableHead>
                         <TableRow>
-                            {/* Define your columns - Adjust as needed */}
                             <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Subject</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Customer</TableCell>
@@ -54,16 +38,15 @@ function TicketList({ tickets, isLoading, error, reloadTickets }) { // Receive t
                     </TableHead>
                     <TableBody>
                         {paginatedTickets.map((ticket) => (
-                            // Render TicketItem for each ticket in the current page
                             <TicketItem key={ticket.id} ticket={ticket} reloadTickets={reloadTickets} />
                         ))}
                     </TableBody>
                 </Table>
             </TableContainer>
             <TablePagination
-                rowsPerPageOptions={[5, 10, 25, 50]} // Add more options
+                rowsPerPageOptions={[5, 10, 25, 50]}
                 component="div"
-                count={tickets.length} // Total number of tickets (for pagination calculation)
+                count={tickets.length}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
@@ -72,5 +55,4 @@ function TicketList({ tickets, isLoading, error, reloadTickets }) { // Receive t
         </Paper>
     );
 }
-
 export default TicketList;

@@ -47,6 +47,17 @@ CREATE TABLE IF NOT EXISTS agents (
     is_available BOOLEAN DEFAULT TRUE   -- Real-time availability status
 );
 
+-- Stores user accounts for login
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,                  -- Optional, depending on requirements
+    full_name TEXT,                     -- Optional
+    hashed_password TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,     -- To disable accounts
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Trigger to update 'updated_at' timestamp on ticket changes
 -- Ensures the updated_at field automatically reflects the last modification time
 CREATE TRIGGER IF NOT EXISTS update_ticket_timestamp
@@ -62,3 +73,4 @@ CREATE INDEX IF NOT EXISTS idx_ticket_assigned_agent ON tickets(assigned_agent_i
 CREATE INDEX IF NOT EXISTS idx_ticket_created_at ON tickets(created_at);
 CREATE INDEX IF NOT EXISTS idx_kb_keywords ON knowledge_base(keywords);
 CREATE INDEX IF NOT EXISTS idx_agent_email ON agents(email);
+CREATE INDEX IF NOT EXISTS idx_user_username ON users(username);

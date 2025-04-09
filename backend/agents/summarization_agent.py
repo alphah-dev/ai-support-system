@@ -5,92 +5,116 @@ import logging
 import asyncio
 import re # Import regular expressions for parsing
 
-# Import the real function
+# Import the real Ollama call function
 from backend.utils.ollama_integration import call_ollama_llm
 
 log = logging.getLogger(__name__)
 
 class SummarizationAgent:
-    def __init__(self, llm_model: str = "qwen:1.8b"): # <-- MAKE SURE THIS IS THE MODEL YOU PULLED (e.g., qwen:1.8b, phi3:mini)
-        """Initializes the agent."""
+    # --- Using qwen:1.8b - If results poor, switch to phi3:mini ---
+    def __init__(self, llm_model: str = "qwen:1.8b"):
+        """Initializes the agent with the specified LLM model."""
         self.llm_model = llm_model
         log.info(f"SummarizationAgent initialized with real LLM model: {self.llm_model}")
-        # No Ollama client needed here if utils handles it
 
     async def summarize_and_extract(self, conversation: str) -> Tuple[str, List[str]]:
         """
-        Generates a summary and extracts actions from a conversation using Ollama.
+        Generates a concise summary of the customer's problem and extracts
+        a list of initial troubleshooting checks/questions for the support agent.
         """
         log.info(f"SummarizationAgent: Processing conversation (length: {len(conversation)}) using model {self.llm_model}")
 
-        # --- 1. Generate Summary ---
-        # Use a clear prompt for the LLM
+        if not conversation or not conversation.strip():
+            log.warning("Summarization attempt on empty conversation text.")
+            return "Conversation text was empty.", ["No actions required."]
+
+        # --- 1. Generate Summary (Keep Improved Prompt) ---
         summary_prompt = f"""
-        Concisely summarize the core problem and request described in the following customer support conversation.
-        Focus on the essential information needed for another agent to quickly understand the situation.
+        Analyze the following customer support conversation.
+        Provide a very concise, one or two sentence summary of the CUSTOMER'S main problem or question ONLY.
+        Focus ONLY on what the customer reported. DO NOT include agent actions or solutions.
 
         Conversation:
         \"\"\"
         {conversation}
         \"\"\"
 
-        Concise Summary:
+        Concise Customer Problem Summary:
         """
         log.debug("Generating summary...")
         summary = await call_ollama_llm(prompt=summary_prompt, model=self.llm_model)
-        # Basic cleanup (model might add prefixes/newlines)
-        summary = summary.replace("Concise Summary:", "").strip()
-        # Further cleanup if model tends to add unwanted introductory phrases
-        summary = re.sub(r"^(Here's|This is) a concise summary:\s*", "", summary, flags=re.IGNORECASE).strip()
-        log.info(f"Summary generated (length: {len(summary)})")
+        # Cleanup
+        summary = summary.split("Concise Customer Problem Summary:")[-1].strip()
+        summary = re.sub(r"^(Here's|The customer's problem is|Summary:)\s*", "", summary, flags=re.IGNORECASE).strip()
+        if not summary or summary.startswith("[Error:"):
+             log.warning(f"Summary generation failed or returned error: {summary}")
+             summary = "[AI summary generation failed]"
+        log.info(f"Summary generated: '{summary[:100]}...'")
 
 
-        # --- 2. Extract Actions ---
-        # This prompt needs careful crafting and testing with your chosen model
+        # --- 2. Extract Agent Troubleshooting Steps/Checks (Revised Prompt for 4-6 Steps) ---
+        # Ask for a slightly smaller number of items (4-6)
         action_prompt = f"""
-        Analyze the following customer support conversation. Identify and list any explicit or strongly implied actionable tasks for the support team.
-        Examples: "Escalate to technical team", "Follow-up required by [date/time]", "Refund requested [amount/details]", "Update user profile [details]", "Check logs for error [details]", "No further action needed".
-        Present the actions clearly, one per line, prefixed with 'Action:'. If no specific actions are required, state 'Action: No further action needed'.
+        Analyze the customer's problem described below. List 4-6 distinct, concise troubleshooting questions the SUPPORT AGENT should ask or checks the AGENT should perform initially.
+        Focus on gathering key information or common first steps for the described issue.
+        Format as a bulleted list (using '*'). Each point should be a short question or check.
+
+        Examples for various issues:
+        * Ask for the specific error code/message.
+        * When did the issue start? After any updates/changes?
+        * What are the steps to reproduce the problem?
+        * Which operating system/device/browser is used?
+        * Ask user to restart the device/router.
+        * Check user's subscription/account status.
+        * Verify payment method details.
+        * Check server logs for related errors around [time].
+        * Ask for a screenshot of the problem area.
+
+        If the problem is too vague, list actions like '* Ask for specific error messages displayed.' and '* Ask for steps to reproduce the issue.'
+
+        DO NOT write a long paragraph. List only short bullet points for the AGENT.
 
         Conversation:
         \"\"\"
         {conversation}
         \"\"\"
 
-        Actions:
+        Agent's Initial Troubleshooting Steps/Questions:
         """
-        log.debug("Extracting actions...")
+        log.debug("Extracting agent troubleshooting steps (requesting 4-6)...") # Log update
         action_response = await call_ollama_llm(prompt=action_prompt, model=self.llm_model)
 
-        # --- 3. Parse Actions ---
-        # Use regex to find lines starting with "Action:" (case-insensitive)
+        # --- 3. Parse Actions (Keep Improved Parsing for Bullets) ---
         actions = []
-        # Handle potential variations like "action:", "Action :", etc.
-        # Make regex slightly more robust to variations and potential markdown lists
-        action_matches = re.findall(r"^\s*(?:Action\s*:|-\s|\*\s)\s*(.*)", action_response, re.IGNORECASE | re.MULTILINE)
+        # Get text after the explicit prompt header
+        cleaned_response = action_response.split("Agent's Initial Troubleshooting Steps/Questions:")[-1]
+
+        # Look for lines starting with '*' or '-'
+        action_matches = re.findall(r"^\s*[\*\-]\s+(.*)", cleaned_response, re.MULTILINE)
 
         if action_matches:
              for action_text in action_matches:
                  cleaned_action = action_text.strip()
-                 # Avoid adding the "no action needed" message as an actual action
-                 if cleaned_action and "no further action needed" not in cleaned_action.lower():
-                     actions.append(cleaned_action)
+                 # Add if it's not empty and not just a generic filler (unless it's the *only* thing)
+                 if cleaned_action and "no further action needed" not in cleaned_action.lower() and "ask for more specific details" not in cleaned_action.lower():
+                     # Optional: Simple de-duplication
+                     if cleaned_action not in actions:
+                          actions.append(cleaned_action)
         else:
-            # Fallback if regex doesn't match expected format but response isn't empty
-            cleaned_response = action_response.replace("Actions:", "").strip()
-            if cleaned_response and "no further action needed" not in cleaned_response.lower():
-                 log.warning(f"Could not parse actions using regex from response: '{action_response}'. Using raw response line(s).")
-                 # Add non-empty lines as potential actions (less reliable)
-                 actions = [line.strip() for line in cleaned_response.split('\n') if line.strip()]
+            # Fallback if no bullet points found
+            fallback_text = cleaned_response.strip()
+            # Check fallback isn't an error or generic filler
+            if fallback_text and not fallback_text.startswith("[Error:") and "ask for more specific details" not in fallback_text.lower() and "no further action needed" not in fallback_text.lower():
+                 log.warning(f"Could not parse bulleted actions from response: '{action_response}'. Using non-empty lines as fallback.")
+                 actions = [line.strip() for line in fallback_text.split('\n') if line.strip() and line.strip() not in actions] # Add unique lines
 
-
-        # If after parsing, actions list is empty, add a default note
+        # Ensure a default message if list is still empty after parsing
         if not actions:
-            # Check if the raw response explicitly said no actions
-            if action_response and "no further action needed" in action_response.lower():
-                 actions.append("No further action needed")
+            if action_response and action_response.startswith("[Error:"):
+                 actions.append("[AI action extraction failed]")
             else:
-                 actions.append("No specific actions identified") # Default if unsure
+                 # If the model didn't provide specific steps, default to asking for details
+                 actions.append("Ask customer for more specific details about the issue.")
 
-        log.info(f"Actions extracted: {actions}")
+        log.info(f"Extracted agent steps/checks ({len(actions)}): {actions}")
         return summary, actions

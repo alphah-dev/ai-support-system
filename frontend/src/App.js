@@ -1,92 +1,90 @@
-// frontend/src/App.js
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, Box, Toolbar, useTheme, useMediaQuery } from '@mui/material';
-import theme from './theme.js'; // Import our specific theme
+// frontend/src/App.jsx (or .js)
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+// Import ThemeProvider, CssBaseline, and Typography from MUI
+import { Box, Toolbar, useTheme, useMediaQuery, CircularProgress, CssBaseline, ThemeProvider, Typography } from '@mui/material';
+// Import our theme generating function
+import { getAppTheme } from './theme.js';
+// Import components and pages (adjust extensions if needed)
 import Sidebar from './components/Sidebar.js';
 import Header from './components/Header.js';
 import DashboardPage from './pages/DashboardPage.js';
 import TicketManagementPage from './pages/TicketManagementPage.js';
+import LoginPage from './pages/LoginPage.js';
+import RegisterPage from './pages/RegisterPage.js';
+import CreateTicketPage from './pages/CreateTicketPage.js';
+import LandingPage from './pages/LandingPage.js';
+// Import authentication context hook
+import { useAuth } from './context/AuthContext.js';
 
-const drawerWidth = 240; // Define sidebar width
+const drawerWidth = 240;
 
-// Extracted content component to easily use theme hooks
-function AppContent() {
-  const muiTheme = useTheme(); // Access theme for breakpoints
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm')); // Check if mobile size
-
-  // State for mobile drawer toggle
-  const [mobileOpen, setMobileOpen] = useState(false);
-  // State for persistent desktop sidebar toggle
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleSidebarToggle = () => {
-     setIsSidebarOpen(!isSidebarOpen);
-     // Close mobile drawer if open when toggling desktop sidebar
-     if(mobileOpen) setMobileOpen(false);
-  };
-
-  // Adjust main content based on sidebar state (only for desktop)
-  const mainContentStyle = {
-    flexGrow: 1,
-    p: 3, // Padding
-    // Adjust width and margin based on sidebar visibility *and* screen size
-    width: { sm: `calc(100% - ${isSidebarOpen && !isMobile ? drawerWidth : 0}px)` },
-    ml: { sm: `${isSidebarOpen && !isMobile ? drawerWidth : 0}px` },
-    transition: muiTheme.transitions.create(['margin', 'width'], {
-      easing: muiTheme.transitions.easing.sharp,
-      // Use different durations for enter/leave for smoother feel
-      duration: isSidebarOpen ? muiTheme.transitions.duration.enteringScreen : muiTheme.transitions.duration.leavingScreen,
-    }),
-  };
-
-  return (
-    <Router>
-      <Box sx={{ display: 'flex', minHeight: '100vh' }}> {/* Ensure box takes full height */}
-        <Header
-          onDrawerToggle={handleDrawerToggle} // Pass mobile toggle handler
-          onSidebarToggle={handleSidebarToggle} // Pass desktop toggle handler
-          isSidebarOpen={isSidebarOpen}
-          drawerWidth={drawerWidth}
-        />
-        <Sidebar
-          drawerWidth={drawerWidth}
-          mobileOpen={mobileOpen}
-          onDrawerToggle={handleDrawerToggle} // Pass mobile toggle handler
-          isDesktopSidebarOpen={isSidebarOpen} // Pass desktop state
-        />
-        {/* Main Content Area */}
-        <Box component="main" sx={mainContentStyle} >
-          <Toolbar /> {/* Necessary height spacer for content below AppBar */}
-          {/* Add Routes */}
-          <Routes>
-            {/* Default route redirects to dashboard */}
-            <Route path="/" element={<Navigate replace to="/dashboard" />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/tickets" element={<TicketManagementPage />} />
-            {/* Add other routes later */}
-            {/* <Route path="/reports" element={<ReportsPage />} /> */}
-            {/* <Route path="/settings" element={<SettingsPage />} /> */}
-            {/* Fallback route */}
-            <Route path="*" element={<Navigate replace to="/dashboard" />} />
-          </Routes>
-        </Box>
-      </Box>
-    </Router>
-  );
+// --- Protected Layout Component ---
+function ProtectedLayout({ toggleColorMode }) {
+    const muiTheme = useTheme(); const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+    const [mobileOpen, setMobileOpen] = useState(false); const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const { logout } = useAuth();
+    const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+    const handleSidebarToggle = () => { setIsSidebarOpen(!isSidebarOpen); if(mobileOpen) setMobileOpen(false); };
+    const mainContentStyle = { flexGrow: 1, p: { xs: muiTheme.spacing(2), sm: muiTheme.spacing(3) }, width: { sm: `calc(100% - ${isSidebarOpen && !isMobile ? drawerWidth : 0}px)` }, ml: { sm: `${isSidebarOpen && !isMobile ? drawerWidth : 0}px` }, transition: muiTheme.transitions.create(['margin', 'width'], { easing: muiTheme.transitions.easing.sharp, duration: isSidebarOpen ? muiTheme.transitions.duration.enteringScreen : muiTheme.transitions.duration.leavingScreen, }), minHeight: `calc(100vh - ${muiTheme.mixins.toolbar.minHeight}px)`, boxSizing: 'border-box', };
+    return (
+         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+            {/* CssBaseline is now applied by ThemeProvider in App */}
+            <Header onDrawerToggle={handleDrawerToggle} onSidebarToggle={handleSidebarToggle} isSidebarOpen={isSidebarOpen} drawerWidth={drawerWidth} onLogout={logout} toggleColorMode={toggleColorMode} />
+            <Sidebar drawerWidth={drawerWidth} mobileOpen={mobileOpen} onDrawerToggle={handleDrawerToggle} isDesktopSidebarOpen={isSidebarOpen} />
+            <Box component="main" sx={mainContentStyle} >
+              <Toolbar /> <Outlet />
+            </Box>
+          </Box>
+    );
 }
 
-// Main App component applies ThemeProvider and CssBaseline
+// --- RequireAuth Component ---
+function RequireAuth({ children }) {
+    const { authToken, isLoading } = useAuth(); const location = useLocation();
+    if (isLoading) { return <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: 'background.default' }}><CircularProgress /></Box>; }
+    if (!authToken) { return <Navigate to="/login" state={{ from: location }} replace />; }
+    return children;
+}
+
+// --- Main App Component ---
 function App() {
-   // ThemeProvider is now applied in main.jsx, no need here
-   // if theme was globally configured there.
-   // However, keeping it here allows App to potentially override/extend theme later if needed.
-   // For simplicity now, main.jsx handles the global theme.
-   return <AppContent />; // Render the content directly
+    const [mode, setMode] = useState(() => { const savedMode = localStorage.getItem('appThemeMode'); return savedMode === 'dark' ? 'dark' : 'light'; });
+    const activeTheme = useMemo(() => getAppTheme(mode), [mode]);
+    const toggleColorMode = useCallback(() => { setMode((prevMode) => { const newMode = prevMode === 'light' ? 'dark' : 'light'; localStorage.setItem('appThemeMode', newMode); return newMode; }); }, []);
+    const { isLoading: isAuthLoading } = useAuth();
+
+    if (isAuthLoading) {
+         return ( <ThemeProvider theme={activeTheme}> <CssBaseline /> <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', bgcolor: 'background.default' }}><CircularProgress /></Box> </ThemeProvider> );
+    }
+
+   return (
+        <ThemeProvider theme={activeTheme}>
+             <CssBaseline /> {/* Apply baseline based on active theme */}
+             <Router>
+                <Routes>
+                    {/* Public Routes */}
+                    <Route path="/" element={<LandingPage toggleColorMode={toggleColorMode}/>} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+
+                    {/* Protected Routes */}
+                    <Route path="/app/*" element={ <RequireAuth> <ProtectedLayout toggleColorMode={toggleColorMode} /> </RequireAuth> } >
+                        <Route index element={<Navigate replace to="/app/dashboard" />} />
+                        <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="tickets" element={<TicketManagementPage />} />
+                        <Route path="create-ticket" element={<CreateTicketPage />} />
+                        {/* Use Typography for nested fallback */}
+                        <Route path="*" element={<Typography sx={{p:3}}>App Section Not Found</Typography>} />
+                    </Route>
+
+                    {/* Use Typography for top-level fallback */}
+                    <Route path="*" element={<Typography sx={{p:3}}>Page Not Found</Typography>} />
+
+                </Routes>
+            </Router>
+        </ThemeProvider>
+   );
 }
 
-export default App; // Export the main App component
+export default App;

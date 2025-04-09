@@ -6,6 +6,12 @@ pydantic[email] # Added [email] extra for EmailStr validation
 sqlalchemy # For potential future ORM use or complex DB interactions, good practice
 python-dotenv # For managing environment variables (like API keys)
 requests # For making HTTP requests (potential external API calls)
-# beautifulsoup4 # Optional: Add if you know you'll need web scraping
+beautifulsoup4 
 numpy # For numerical operations, especially embedding similarity later
-ollama # The official Ollama Python client
+ollama # The official Ollama Python client# Add these lines (or ensure they exist)
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+passlib
+python-jose
+python-multipart

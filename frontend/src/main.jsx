@@ -1,23 +1,19 @@
-// frontend/src/main.jsx
+// frontend/src/main.jsx (or .js) - Corrected
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.js'; // Import our main App component
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import theme from './theme.js'; // Import our custom theme
+import App from './App.js'; // Assuming App.js
+// --- ThemeProvider and theme are removed from here ---
+// --- CssBaseline is removed from here (will be applied inside App) ---
+import { AuthProvider } from './context/AuthContext.js'; // Assuming AuthContext.js
 
-// Find the root element in index.html
 const rootElement = document.getElementById('root');
-// Create a React root attached to that element
 const root = ReactDOM.createRoot(rootElement);
 
-// Render the application
 root.render(
   <React.StrictMode>
-    {/* Apply the custom theme and CSS baseline globally */}
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <App /> {/* Render the main application component */}
-    </ThemeProvider>
+    {/* Only wrap with providers that DON'T depend on App's internal state */}
+    <AuthProvider>
+      <App /> {/* App component will now manage ThemeProvider */}
+    </AuthProvider>
   </React.StrictMode>
 );

@@ -5,39 +5,47 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    // Ensure the react plugin is configured to handle JSX in JS files
-    // This might involve passing options, depending on the plugin version.
-    // The default settings usually enable this, but let's be explicit.
+    // React plugin configuration (keep existing if it was working)
     react({
-       // This ensures babel plugin necessary for React is included
        babel: {
          plugins: ['@babel/plugin-transform-react-jsx'],
        },
-       // Attempt to force esbuild to handle .js as jsx for this plugin too
-       // Although the top-level esbuild config should be sufficient
-       // esbuildOptions: {
-       //  loader: 'jsx',
-       // include: /src\/.*\.js$/, // Regex to target .js in src
-       // },
     }),
   ],
-  // Explicitly configure esbuild (this should be the main fix)
+  // esbuild configuration to handle JSX in .js files
   esbuild: {
-    loader: 'jsx', // Use jsx loader for files matched by include
+    loader: 'jsx',
     include: [
-      // This regex targets all .js files within the src directory
-      /src\/.*\.js$/,
-      // Include standard .jsx as well
-      /src\/.*\.jsx$/,
+      /src\/.*\.js$/, // Target .js files in src
+      /src\/.*\.jsx$/, // Target .jsx files in src
     ],
-    exclude: [], // Don't exclude anything explicitly here for now
+    exclude: [], // Typically node_modules is excluded by default, this is fine
   },
-   // Optional: Add optimizeDeps as a fallback if above fails
+   // optimizeDeps configuration (keep existing)
    optimizeDeps: {
      esbuildOptions: {
        loader: {
-         '.js': 'jsx', // Ensure pre-bundling also treats .js as jsx
+         '.js': 'jsx',
        },
      },
    },
+   // --- ADDED Server Configuration ---
+   server: {
+     host: true, // Listen on all addresses, helpful for network access like Ngrok
+     port: 5173, // Keep default Vite port or change if needed
+     strictPort: true, // Optional: Fail if port is already in use
+     hmr: { // Hot Module Replacement settings
+        overlay: true // Show errors directly in the browser overlay
+     },
+     // --- Allow requests from Ngrok ---
+     allowedHosts: [
+         'localhost', // Standard localhost
+         '127.0.0.1', // Standard loopback
+         '.ngrok-free.app' // <<<--- Allow ngrok free subdomains (wildcard)
+         // Add other specific hosts if needed, e.g., your local network IP
+         // '192.168.1.100'
+     ]
+     // --------------------------------
+   }
+   // ----------------------------------
 })
